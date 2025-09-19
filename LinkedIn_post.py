@@ -135,10 +135,7 @@ Generate a LinkedIn post that feels authentic to this user's voice, builds on th
             "action": "linkedin_post_generated",
             "input_context": input_data,
             "generated_post": generated_post,
-            "post_length": len(generated_post),
-            "hashtags_used": extract_hashtags(generated_post),
-            "engagement_elements": analyze_engagement_elements(generated_post),
-            "timestamp": str(asyncio.get_event_loop().time())
+            "hashtags_used": extract_hashtags(generated_post)
         }
         
         # Store the activity

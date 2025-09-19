@@ -22,7 +22,7 @@ import uvicorn
 from LinkedIn_comment import analyze_linkedin_comment
 from LinkedIn_post import generate_intelligent_linkedin_post
 from user_activate_store import  store_user_data
-
+from image_generation import generate_image
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -104,20 +104,31 @@ class PostGenerationRequest(BaseModel):
     """Request model for LinkedIn post generation"""
     input_context: str = Field(..., min_length=10, max_length=2000, description="Context or topic for the LinkedIn post")
     user_id: str = Field(..., min_length=1, max_length=100, description="Unique user identifier")
+    image: bool = Field(..., description="Image URL for the LinkedIn post")
 
 class CommentGenerationResponse(BaseModel):
     """Response model for LinkedIn comment generation"""
     success: bool
+    status_code: int
     comments: Optional[Dict[str, str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    tokens_used: Optional[int] = None
+    activity_stored: Optional[bool] = None
     error: Optional[str] = None
     timestamp: str
 
 class PostGenerationResponse(BaseModel):
     """Response model for LinkedIn post generation"""
     success: bool
+    status_code: int
     post: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    hashtags: Optional[List[str]] = None
+    tokens_used: Optional[int] = None
+    user_preferences_used: Optional[bool] = None
+    activity_stored: Optional[bool] = None
+    image_requested: Optional[bool] = None
+    image_generated: Optional[bool] = None
+    image_url: Optional[str] = None
+    image_price: Optional[str] = None
     error: Optional[str] = None
     timestamp: str
 
@@ -186,11 +197,10 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
         
         # Store user activity
         activity_data = {
-            "action": "linkedin_comment_generated",
-            "post_text_preview": request.post_text[:100] + "..." if len(request.post_text) > 100 else request.post_text,
-            "comment_style": comment_style,
-            "comment_type": comment_type,
-            "tokens_used": tokens
+            "post_text_preview": request.post_text,
+            "comment_generated1": result.linkedin_comment.linkedin_comment1,
+            "comment_generated2": result.linkedin_comment.linkedin_comment2,
+            "comment_generated3": result.linkedin_comment.linkedin_comment3
         }
         
         store_result = store_user_data(request.user_id, activity_data)
@@ -202,24 +212,14 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
             "comment3": result.linkedin_comment.linkedin_comment3
         }
         
-        metadata = {
-            "tokens_used": tokens,
-            "comment_style": comment_style,
-            "comment_type": comment_type,
-            "activity_stored": store_result.get("success", False),
-            "comment_lengths": {
-                "comment1": len(comments["comment1"]),
-                "comment2": len(comments["comment2"]),
-                "comment3": len(comments["comment3"])
-            }
-        }
-        
         logger.info(f"Successfully generated comments for user: {request.user_id}")
         
         return CommentGenerationResponse(
             success=True,
+            status_code=200,
             comments=comments,
-            metadata=metadata,
+            tokens_used=tokens,
+            activity_stored=store_result.get("success", False),
             timestamp=datetime.utcnow().isoformat()
         )
         
@@ -229,6 +229,7 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
         logger.error(f"Error generating comment for user {request.user_id}: {str(e)}")
         return CommentGenerationResponse(
             success=False,
+            status_code=500,
             error=f"Internal server error: {str(e)}",
             timestamp=datetime.utcnow().isoformat()
         )
@@ -250,6 +251,23 @@ async def generate_linkedin_post(request: PostGenerationRequest):
             input_data=request.input_context,
             user_id=request.user_id
         )
+        # Handle image generation based on user request
+        image_url = None
+        image_price = None
+        image_generated = False
+        
+        if request.image == True:
+            try:
+                url, price = generate_image(result.get("post"))
+                if url:  # Check if image generation was successful
+                    image_url = url
+                    image_price = price
+                    image_generated = True
+                    logger.info(f"Image generated successfully for user: {request.user_id}")
+                else:
+                    logger.warning(f"Image generation failed for user: {request.user_id}")
+            except Exception as e:
+                logger.error(f"Error generating image for user {request.user_id}: {str(e)}")
         
         if not result.get("success"):
             raise HTTPException(
@@ -257,22 +275,20 @@ async def generate_linkedin_post(request: PostGenerationRequest):
                 detail=f"Failed to generate post: {result.get('error', 'Unknown error')}"
             )
         
-        metadata = {
-            "character_count": result.get("character_count", 0),
-            "word_count": result.get("word_count", 0),
-            "within_limits": result.get("within_limits", False),
-            "hashtags": result.get("hashtags", []),
-            "tokens_used": result.get("tokens_used", 0),
-            "user_preferences_used": result.get("user_preferences_used", False),
-            "activity_stored": result.get("activity_stored", False)
-        }
-        
         logger.info(f"Successfully generated post for user: {request.user_id}")
         
         return PostGenerationResponse(
             success=True,
+            status_code=200,
             post=result.get("post"),
-            metadata=metadata,
+            hashtags=result.get("hashtags", []),
+            tokens_used=result.get("tokens_used", 0),
+            user_preferences_used=result.get("user_preferences_used", False),
+            activity_stored=result.get("activity_stored", False),
+            image_requested=request.image,
+            image_generated=image_generated,
+            image_url=image_url,
+            image_price=image_price,
             timestamp=datetime.utcnow().isoformat()
         )
         
@@ -282,6 +298,7 @@ async def generate_linkedin_post(request: PostGenerationRequest):
         logger.error(f"Error generating post for user {request.user_id}: {str(e)}")
         return PostGenerationResponse(
             success=False,
+            status_code=500,
             error=f"Internal server error: {str(e)}",
             timestamp=datetime.utcnow().isoformat()
         )
@@ -323,7 +340,7 @@ if __name__ == "__main__":
         "app:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,  # Set to False for production
-        workers=1,     # Adjust based on your needs
+        reload=False,  # Set to False for production
+        workers=3,     # Adjust based on your needs
         log_level="info"
     )
