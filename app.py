@@ -59,13 +59,27 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+# CORS Middleware - Configured for Chrome Extensions
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
+    allow_origins=[
+        "chrome-extension://*",  # Allow all Chrome extensions
+        "http://localhost:*",    # Allow localhost with any port
+        "http://127.0.0.1:*",   # Allow 127.0.0.1 with any port
+        "https://localhost:*",   # Allow HTTPS localhost
+        "https://127.0.0.1:*"    # Allow HTTPS 127.0.0.1
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization", 
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
+    ],
 )
 
 # Trusted Host Middleware (configure for production)
