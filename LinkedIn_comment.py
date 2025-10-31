@@ -25,98 +25,38 @@ class linkedin_comment_data(BaseModel):
 
 
 async def analyze_linkedin_comment(post_text_data, comment_style, comment_type):   
-    # Auto-determine character limits based on comment style
+    # Auto-determine word limits based on comment style
     style_limits = {
-        "Professional": "1200",
-        "Friendly": "800", 
-        "Long": "1250",
-        "Short": "400"
+        "Professional": "50",
+        "Friendly": "50", 
+        "Long": "70",
+        "Short": "50"
     }
     
-    # Get the character limit for the selected style
-    character_limit = style_limits.get(comment_style, "1000")  # Default to 1000 if style not found
+    # Get the word limit for the selected style
+    word_limit = style_limits.get(comment_style, "50")  # Default to 50 if style not found
     
-    prompt_template = """You are a LinkedIn engagement expert specializing in creating compelling, authentic comments that drive meaningful professional conversations. Your task is to generate 3 unique LinkedIn comments based on the provided post content and user specifications.
+    prompt_template = """You are a LinkedIn user writing authentic comments. Generate 3 unique, natural-sounding comments.
 
-**CRITICAL REQUIREMENTS:**
-- Each comment must stay UNDER the specified character limit (including spaces and punctuation)
-- Generate exactly 3 distinct comment variations
-- Match the specified comment_style and comment_type precisely
-- Ensure comments feel authentic and add genuine value to the conversation
+REQUIREMENTS:
+- Stay within word limit (50 words for most, 70 for Long)
+- Sound human and conversational
+- Use contractions and natural phrasing
 
-**COMMENT STYLES:**
+STYLES:
+Professional: Knowledgeable but conversational. Example: "I've seen this work well in my team. The key is getting buy-in early."
 
-**Professional:** 
-- Use formal business language and industry terminology
-- Reference specific business metrics, strategies, or frameworks
-- Include thought leadership elements and strategic insights
-- Maintain executive-level tone with sophisticated vocabulary
-- Example phrases: "This aligns with current market dynamics..." "From a strategic perspective..." "Industry best practices suggest..."
+Friendly: Like chatting over coffee. Example: "Love this! I tried something similar last month and it changed how we work."
 
-**Friendly:**
-- Use conversational, approachable language with personal touches
-- Include relatable experiences and casual expressions
-- Add warmth through inclusive language and personal anecdotes
-- Use contractions and everyday language naturally
-- Example phrases: "I totally agree with this!" "This reminds me of when..." "Love how you put this..."
+Long: Brief stories with examples. Example: "This resonates with me. Last year we faced similar challenges. We tried a different approach and learned that simple solutions work best."
 
-**Long:**
-- Provide comprehensive analysis with detailed explanations
-- Include multiple supporting points and elaborate reasoning
-- Add context, background information, and extended insights
-- Use complex sentence structures and thorough exploration of ideas
-- Build multi-layered arguments with supporting evidence
+Short: Quick and punchy. Example: "Exactly what I needed today. Thanks for sharing!"
 
-**Short:**
-- Use concise, punchy statements that pack maximum impact
-- Employ bullet points, short sentences, and direct language
-- Focus on one key insight delivered powerfully
-- Eliminate unnecessary words while maintaining meaning
-- Use impactful, memorable phrases
-- Keep comments brief and to the point for quick engagement
+TYPES:
+Positive: Show enthusiasm and support.
+Negative: Share different perspectives respectfully.
 
-**COMMENT TYPES:**
-
-**Positive:**
-- Express genuine agreement, support, and enthusiasm
-- Highlight strengths, benefits, and positive outcomes
-- Share success stories and constructive additions
-- Use uplifting, encouraging, and optimistic language
-- Build upon the original post's positive elements
-
-**Negative:**
-- Provide respectful counterpoints and alternative perspectives
-- Highlight potential challenges, risks, or overlooked factors
-- Offer constructive criticism with diplomatic language
-- Present different viewpoints while maintaining professionalism
-- Use phrases like "However, one consideration might be..." "While I appreciate this perspective, I've found..."
-
-**ENGAGEMENT STRATEGIES:**
-- Ask thoughtful questions to encourage further discussion
-- Share relevant personal insights or experiences
-- Reference current industry trends or recent developments
-- Use storytelling elements to make comments memorable
-- Include actionable takeaways for readers
-
-**FORMATTING GUIDELINES:**
-- Use emojis strategically (1-2 per comment maximum)
-- Include line breaks for better readability when appropriate
-- End with engaging questions or calls-to-action when suitable
-- Avoid excessive hashtags (max 1-2 relevant ones)
-
-**AUTHENTICITY MARKERS:**
-- Include specific, concrete examples rather than generic statements
-- Reference real industry scenarios and practical applications
-- Use natural language patterns and avoid robotic phrasing
-- Show genuine interest in the topic and original poster's perspective
-
-**CHARACTER LIMITS BY STYLE:**
-- **Professional**: Aim for 800-1,200 characters for thorough, executive-level insights
-- **Friendly**: Target 400-800 characters for warm, conversational engagement  
-- **Long**: Use 1,000-1,250 characters for comprehensive analysis and detailed thoughts
-- **Short**: Keep to 150-400 characters for quick, impactful responses
-
-Generate 3 unique comments that perfectly match the specified style and type, staying under the character limit, that will meaningfully contribute to the LinkedIn conversation."""
+TIPS: Use contractions, vary sentence length, include filler words (really, actually, just), minimal emojis (0-2 max)."""
 
     # Get the async client
     client = await get_async_client()
@@ -125,9 +65,11 @@ Generate 3 unique comments that perfectly match the specified style and type, st
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": prompt_template},
-            {"role": "user", "content": f"LinkedIn Post Content:\n{post_text_data}\n\nComment Style: {comment_style}\nComment Type: {comment_type}\nCharacter Limit: {character_limit} characters (Stay under this limit for each comment)"}
+            {"role": "user", "content": f"Post: {post_text_data}\n\nStyle: {comment_style} | Type: {comment_type} | Max: {word_limit} words"}
         ],
         response_format=linkedin_comment_data,
+        # temperature=0.8,  # Higher temperature for more creative, human-like responses
+        max_tokens=500,   # Limit max tokens to speed up generation (50-70 words = ~100-150 tokens)
     )
 
     analysis_response = completion.choices[0].message

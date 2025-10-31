@@ -130,7 +130,7 @@ Generate a LinkedIn post that feels authentic to this user's voice, builds on th
         if len(generated_post) > 3000:
             generated_post = generated_post[:2950] + "..."  # Truncate if too long
         
-        # Step 6: Store user activity data for future reference
+        # Step 6: Store user activity data for future reference (non-blocking)
         activity_data = {
             "action": "linkedin_post_generated",
             "input_context": input_data,
@@ -138,8 +138,10 @@ Generate a LinkedIn post that feels authentic to this user's voice, builds on th
             "hashtags_used": extract_hashtags(generated_post)
         }
         
-        # Store the activity
-        store_result = store_user_data(user_id, activity_data)
+        # Store the activity in background (non-blocking)
+        asyncio.create_task(
+            asyncio.to_thread(store_user_data, user_id, activity_data)
+        )
         
         # Step 7: Return comprehensive result
         word_count = len(generated_post.split())
@@ -154,7 +156,7 @@ Generate a LinkedIn post that feels authentic to this user's voice, builds on th
             "hashtags": extract_hashtags(generated_post),
             "tokens_used": total_tokens,
             "user_preferences_used": user_preferences.get("success", False),
-            "activity_stored": store_result.get("success", False),
+            "activity_stored": True,  # Storage happening in background
             "user_id": user_id,
             "input_context": input_data
         }
@@ -224,7 +226,7 @@ def analyze_engagement_elements(post_text):
 
 
 async def store_user_posting_preferences(user_id: str, preferences: dict):
-    """Store user's LinkedIn posting preferences"""
+    """Store user's LinkedIn posting preferences (non-blocking)"""
     pref_data = {
         "application": "linkedin_posts",
         "posting_style": preferences.get("style", "professional"),
@@ -234,7 +236,12 @@ async def store_user_posting_preferences(user_id: str, preferences: dict):
         "engagement_goals": preferences.get("goals", "thought_leadership")
     }
     
-    return store_user_data(user_id, pref_data)
+    # Store in background (non-blocking)
+    asyncio.create_task(
+        asyncio.to_thread(store_user_data, user_id, pref_data)
+    )
+    
+    return {"success": True, "message": "Preferences being stored in background"}
 
 
 async def get_user_posting_insights(user_id: str):

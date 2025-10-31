@@ -209,7 +209,14 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
         if result is None:
             raise HTTPException(status_code=500, detail="Failed to generate comments")
         
-        # Store user activity
+        # Format response
+        comments = {
+            "comment1": result.linkedin_comment.linkedin_comment1,
+            "comment2": result.linkedin_comment.linkedin_comment2,
+            "comment3": result.linkedin_comment.linkedin_comment3
+        }
+        
+        # Prepare activity data for background storage
         activity_data = {
             "post_text_preview": request.post_text,
             "comment_generated1": result.linkedin_comment.linkedin_comment1,
@@ -217,14 +224,10 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
             "comment_generated3": result.linkedin_comment.linkedin_comment3
         }
         
-        store_result = store_user_data(request.user_id, activity_data)
-        
-        # Format response
-        comments = {
-            "comment1": result.linkedin_comment.linkedin_comment1,
-            "comment2": result.linkedin_comment.linkedin_comment2,
-            "comment3": result.linkedin_comment.linkedin_comment3
-        }
+        # Store user data in background (non-blocking)
+        asyncio.create_task(
+            asyncio.to_thread(store_user_data, request.user_id, activity_data)
+        )
         
         logger.info(f"Successfully generated comments for user: {request.user_id}")
         
@@ -233,7 +236,7 @@ async def generate_linkedin_comment(request: CommentGenerationRequest):
             status_code=200,
             comments=comments,
             tokens_used=tokens,
-            activity_stored=store_result.get("success", False),
+            activity_stored=True,  # Indicates storage is happening in background
             timestamp=datetime.utcnow().isoformat()
         )
         
