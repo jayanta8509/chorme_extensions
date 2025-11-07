@@ -36,12 +36,15 @@ async def analyze_linkedin_comment(post_text_data, comment_style, comment_type):
     # Get the word limit for the selected style
     word_limit = style_limits.get(comment_style, "50")  # Default to 50 if style not found
     
-    prompt_template = """You are a LinkedIn user writing authentic comments. Generate 3 unique, natural-sounding comments.
+    prompt_template = """You are a LinkedIn user writing authentic comments. Generate EXACTLY 3 DISTINCT, unique, natural-sounding comments.
+
+CRITICAL: You MUST generate ALL 3 comments. Each comment MUST be different from the others.
 
 REQUIREMENTS:
 - Stay within word limit (50 words for most, 70 for Long)
 - Sound human and conversational
 - Use contractions and natural phrasing
+- Make each comment approach the topic from a different angle
 
 STYLES:
 Professional: Knowledgeable but conversational. Example: "I've seen this work well in my team. The key is getting buy-in early."
@@ -53,10 +56,13 @@ Long: Brief stories with examples. Example: "This resonates with me. Last year w
 Short: Quick and punchy. Example: "Exactly what I needed today. Thanks for sharing!"
 
 TYPES:
-Positive: Show enthusiasm and support.
-Negative: Share different perspectives respectfully.
+Positive: Show enthusiasm and support. Vary the approach (enthusiasm, agreement, personal experience).
+Negative: Share different perspectives respectfully. Vary the approach (skepticism, concern, alternative viewpoint, implementation doubt, past experience).
 
-TIPS: Use contractions, vary sentence length, include filler words (really, actually, just), minimal emojis (0-2 max)."""
+TIPS: 
+- Use contractions, vary sentence length, include filler words (really, actually, just), minimal emojis (0-2 max)
+- For negative comments: Be constructive, question implementation, share concerns, or offer alternative perspectives
+- Each of the 3 comments should take a slightly different angle or focus on different aspects"""
 
     # Get the async client
     client = await get_async_client()
@@ -65,11 +71,11 @@ TIPS: Use contractions, vary sentence length, include filler words (really, actu
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": prompt_template},
-            {"role": "user", "content": f"Post: {post_text_data}\n\nStyle: {comment_style} | Type: {comment_type} | Max: {word_limit} words"}
+            {"role": "user", "content": f"Post: {post_text_data}\n\nStyle: {comment_style} | Type: {comment_type} | Max: {word_limit} words\n\nGenerate 3 complete, distinct comments. Do not leave any comment empty."}
         ],
         response_format=linkedin_comment_data,
-        # temperature=0.8,  # Higher temperature for more creative, human-like responses
-        max_tokens=500,   # Limit max tokens to speed up generation (50-70 words = ~100-150 tokens)
+        temperature=0.9,  # Higher temperature for more creative, diverse responses
+        max_tokens=800,   # Increased to ensure enough tokens for all 3 comments (especially for negative/complex ones)
     )
 
     analysis_response = completion.choices[0].message
