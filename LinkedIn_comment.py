@@ -29,7 +29,7 @@ async def analyze_linkedin_comment(post_text_data, comment_style, comment_type):
     style_limits = {
         "Professional": "50",
         "Friendly": "50", 
-        "Long": "70",
+        "Long": "90",
         "Short": "50"
     }
     
