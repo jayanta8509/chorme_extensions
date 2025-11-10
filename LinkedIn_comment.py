@@ -41,7 +41,7 @@ async def analyze_linkedin_comment(post_text_data, comment_style, comment_type):
 CRITICAL: You MUST generate ALL 3 comments. Each comment MUST be different from the others.
 
 REQUIREMENTS:
-- Stay within word limit (50 words for most, 70 for Long)
+- Stay within word limit (50 words for most, 90 for Long)
 - Sound human and conversational
 - Use contractions and natural phrasing
 - Make each comment approach the topic from a different angle
