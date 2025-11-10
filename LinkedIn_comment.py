@@ -28,20 +28,29 @@ async def analyze_linkedin_comment(post_text_data, comment_style, comment_type):
     # Auto-determine word limits based on comment style
     style_limits = {
         "Professional": "50",
-        "Friendly": "50", 
-        "Long": "90",
+        "Friendly": "50",
+        "Long": "70",
         "Short": "50"
     }
     
     # Get the word limit for the selected style
     word_limit = style_limits.get(comment_style, "50")  # Default to 50 if style not found
     
-    prompt_template = """You are a LinkedIn user writing authentic comments. Generate EXACTLY 3 DISTINCT, unique, natural-sounding comments.
+    # Create dynamic requirements based on comment style
+    if comment_style == "Long":
+        word_requirement = "70-75 words for Long style (target exactly 70-75)"
+        example_length = "70"
+    else:
+        word_requirement = f"{word_limit} words for {comment_style} style (±5 words tolerance)"
+        example_length = word_limit
+
+    prompt_template = f"""You are a LinkedIn user writing authentic comments. Generate EXACTLY 3 DISTINCT, unique, natural-sounding comments.
 
 CRITICAL: You MUST generate ALL 3 comments. Each comment MUST be different from the others.
 
 REQUIREMENTS:
-- Stay within word limit (50 words for most, 90 for Long)
+- Each comment MUST be: {word_requirement}
+- Count your words carefully - each comment should be substantial
 - Sound human and conversational
 - Use contractions and natural phrasing
 - Make each comment approach the topic from a different angle
@@ -51,7 +60,7 @@ Professional: Knowledgeable but conversational. Example: "I've seen this work we
 
 Friendly: Like chatting over coffee. Example: "Love this! I tried something similar last month and it changed how we work."
 
-Long: Brief stories with examples. Example: "This resonates with me. Last year we faced similar challenges. We tried a different approach and learned that simple solutions work best."
+Long: Detailed stories with examples (70 words). Example: "This resonates with me. Last year we faced similar challenges with team communication. We tried a different approach using daily stand-ups and learned that simple solutions work best. The breakthrough came when we realized transparency builds trust. Now our meetings are twice as productive and everyone feels more engaged."
 
 Short: Quick and punchy. Example: "Exactly what I needed today. Thanks for sharing!"
 
@@ -59,10 +68,12 @@ TYPES:
 Positive: Show enthusiasm and support. Vary the approach (enthusiasm, agreement, personal experience).
 Negative: Share different perspectives respectfully. Vary the approach (skepticism, concern, alternative viewpoint, implementation doubt, past experience).
 
-TIPS: 
+TIPS:
 - Use contractions, vary sentence length, include filler words (really, actually, just), minimal emojis (0-2 max)
 - For negative comments: Be constructive, question implementation, share concerns, or offer alternative perspectives
-- Each of the 3 comments should take a slightly different angle or focus on different aspects"""
+- Each of the 3 comments should take a slightly different angle or focus on different aspects
+- WORD COUNT FOCUS: Write substantial comments with detailed examples and explanations to reach the target word count
+- For Long comments: Include specific examples, personal anecdotes, or detailed analysis to naturally reach 70 words"""
 
     # Get the async client
     client = await get_async_client()
@@ -86,4 +97,27 @@ TIPS:
         return None, total_tokens
     else:
         parsed_data = linkedin_comment_data(linkedin_comment=analysis_response.parsed.linkedin_comment)
+
+        # Validate word counts for each comment
+
+        def validate_word_count(comment_text: str) -> bool:
+            word_count = len(comment_text.split())
+            if comment_style == "Long":
+                return 70 <= word_count <= 75  # Long style: 70-75 words
+            else:
+                return 45 <= word_count <= 55  # Other styles: 45-55 words
+
+        # Check if all comments meet the word count requirements
+        comments_valid = (
+            validate_word_count(parsed_data.linkedin_comment.linkedin_comment1) and
+            validate_word_count(parsed_data.linkedin_comment.linkedin_comment2) and
+            validate_word_count(parsed_data.linkedin_comment.linkedin_comment3)
+        )
+
+        if not comments_valid:
+            if comment_style == "Long":
+                print(f"Warning: Some comments may not meet the target word count of 70-75 words")
+            else:
+                print(f"Warning: Some comments may not meet the target word count of 45-55 words")
+
         return parsed_data, total_tokens
