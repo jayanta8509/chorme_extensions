@@ -23,6 +23,7 @@ from LinkedIn_comment import analyze_linkedin_comment
 from LinkedIn_post import generate_intelligent_linkedin_post
 from user_activate_store import  store_user_data
 from image_generation import generate_image
+from professional_tone import professional_tone
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -119,6 +120,9 @@ class PostGenerationRequest(BaseModel):
     input_context: str = Field(..., min_length=10, max_length=2000, description="Context or topic for the LinkedIn post")
     user_id: str = Field(..., min_length=1, max_length=100, description="Unique user identifier")
     image: bool = Field(..., description="Image URL for the LinkedIn post")
+class ProfessionaltoneRequest(BaseModel):
+    """Request model for LinkedIn post generation"""
+    input_context: str = Field(..., min_length=10, max_length=2000, description="Context or topic for the text")
 
 class CommentGenerationResponse(BaseModel):
     """Response model for LinkedIn comment generation"""
@@ -319,6 +323,33 @@ async def generate_linkedin_post(request: PostGenerationRequest):
             error=f"Internal server error: {str(e)}",
             timestamp=datetime.utcnow().isoformat()
         )
+
+@app.post("/professional-tone", response_model=ProfessionaltoneRequest, tags=["Content Generation"])
+async def generate_professional_tone(request: ProfessionaltoneRequest):
+    try:
+
+        professional, tokens = professional_tone(ProfessionaltoneRequest.input_context)
+
+        return CommentGenerationResponse(
+            success=True,
+            status_code=200,
+            comments=professional,
+            tokens_used=tokens,
+            activity_stored=True,  # Indicates storage is happening in background
+            timestamp=datetime.utcnow().isoformat()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating comment for user {request.user_id}: {str(e)}")
+        return CommentGenerationResponse(
+            success=False,
+            status_code=500,
+            error=f"Internal server error: {str(e)}",
+            timestamp=datetime.utcnow().isoformat()
+        )
+
 
 # User Data Endpoints removed as per user request
 
