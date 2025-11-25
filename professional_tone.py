@@ -9,10 +9,13 @@ sys.path.append(str(Path(__file__).parent.parent))
 from shared_client import get_async_client
 
     
-class professional_data(BaseModel):
+class professional_tone_data(BaseModel):
     tone_one: str
     tone_two: str
     tone_three: str
+
+class professional_data(BaseModel):
+    professional: professional_tone_data
 
 
 async def professional_tone(text):
